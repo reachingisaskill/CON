@@ -24,7 +24,7 @@ namespace CON
 
 ////////////////////////////////////////////////////////////////////////////////
   // Data types for the values
-  enum class Type { Null, String, Numeric, Boolean, Object };
+  enum class Type { Null, String, Numeric, Boolean, Array, Object };
 
   // List of errors
   typedef std::vector<std::string> ErrorList;
@@ -66,6 +66,9 @@ namespace CON
       // Parser error flag
       bool _parseError;
 
+      // Logic to update the type and clear out the unecessary data
+      void _updateType( Type );
+
     public:
       // Parse error built from filname, line num, error
       Exception( ErrorList& );
@@ -98,10 +101,14 @@ namespace CON
 
     // Mapping of identifier to object pointer
     typedef std::map<std::string, Object*> ObjectMap;
+    typedef std::vector<Object*> Array;
 
     private:
       // Map of all the children
       ObjectMap _children;
+
+      // If array store the array items here
+      Array _array;
 
       // String holding the literal value
       std::string _value;
@@ -112,6 +119,9 @@ namespace CON
     public:
       // Initialise empty object
       Object();
+
+      // Initialise empty object with a default type
+      explicit Object( Type );
 
       // Copy constructions
       Object( const Object& );
@@ -129,15 +139,21 @@ namespace CON
       ~Object();
 
 
-      // If it has children it must be an object
-      bool isObject() const { return _children.size() > 0; }
+////////////////////////////////////////////////////////////////////////////////
+      // Set the type for the object will destroy internal data if the types are not compatible
+      void setType( Type );
+      Type getType() const { return _type; }
 
-      // Return true if a child node exists with that name
-      bool has( std::string ) const;
 
-      // If the object exists but has not data
+////////////////////////////////////////////////////////////////////////////////
+      // If Type == Numeric or String or Boolean
+
+      // Returns whether the object type is null. There are no other actions for a null object
       bool isNull() const { return _type == Type::Null; }
 
+
+////////////////////////////////////////////////////////////////////////////////
+      // If Type == Numeric or String or Boolean
 
       // Set the value string
       void setRawValue( std::string, Type );
@@ -155,11 +171,6 @@ namespace CON
 //      void setValue( unsigned float );
 //      void setValue( unsigned double );
 
-
-      // Add a child to the map
-      void addChild( std::string, Object );
-
-
       // Return different interpretations of the value
       // String
       const std::string& asString() const;
@@ -175,11 +186,42 @@ namespace CON
       bool asBool() const;
 
 
+////////////////////////////////////////////////////////////////////////////////
+      // If Type == Object
+
+      // If it has children it must be an object
+      bool isObject() const { return _children.size() > 0; }
+
+      // Return true if a child node exists with that name
+      bool has( std::string ) const;
+
+      // Add a child to the map
+      void addChild( std::string, Object );
+
       // Return a child
       Object& get( std::string );
       Object& operator[]( std::string id ) { return this->get( id ); }
       const Object& get( std::string ) const;
       const Object& operator[]( std::string id ) const { return this->get( id ); }
+
+
+////////////////////////////////////////////////////////////////////////////////
+      // If Type == Array
+
+      // Push an object to array.
+      void push( Object& );
+      void push( std::string );
+      void push( char );
+      void push( int );
+      void push( long );
+      void push( float );
+      void push( double );
+
+      // Return a index value from the array
+      Object& get( size_t );
+      Object& operator[]( size_t id ) { return this->get( id ); }
+      const Object& get( size_t ) const;
+      const Object& operator[]( size_t id ) const { return this->get( id ); }
   };
 
 }

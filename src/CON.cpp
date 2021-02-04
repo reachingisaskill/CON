@@ -55,14 +55,25 @@ namespace CON
 
   Object::Object() :
     _children(),
+    _array(),
     _value(),
     _type( Type::Null )
   {
   }
 
 
+  Object::Object( Type t ) :
+    _children(),
+    _array(),
+    _value(),
+    _type( t )
+  {
+  }
+
+
   Object::Object( const Object& other ) :
     _children(),
+    _array(),
     _value( other._value ),
     _type( other._type )
   {
@@ -70,11 +81,16 @@ namespace CON
     {
       _children[it->first] = new Object( *it->second );
     }
+    for ( Array::const_iterator it = other._array.begin(); it != other._array.end() ; ++it )
+    {
+      _array.push_back( new Object( *(*it) ) );
+    }
   }
 
 
   Object::Object( Object&& other ) :
     _children( std::move( other._children ) ),
+    _array( std::move( other._array ) ),
     _value( std::move( other._value ) ),
     _type( std::move( other._type ) )
   {
@@ -88,6 +104,11 @@ namespace CON
       delete it->second;
     }
     _children.clear();
+    for ( Array::iterator it = _array.begin(); it != _array.end() ; ++it )
+    {
+      delete *it;
+    }
+    _array.clear();
 
     _value = other._value;
     _type = other._type;
@@ -95,6 +116,10 @@ namespace CON
     for ( ObjectMap::const_iterator it = other._children.begin(); it != other._children.end() ; ++it )
     {
       _children[it->first] = new Object( *it->second );
+    }
+    for ( Array::iterator it = _array.begin(); it != _array.end() ; ++it )
+    {
+      _array.push_back( new Object( *(*it) ) );
     }
 
     return *this;
@@ -108,9 +133,16 @@ namespace CON
       delete it->second;
     }
     _children.clear();
+    for ( Array::iterator it = _array.begin(); it != _array.end() ; ++it )
+    {
+      delete *it;
+    }
+    _array.clear();
+
 
     _value = std::move( other._value );
     _children = std::move( other._children );
+    _array = std::move( other._array );
     _type = std::move( other._type );
 
     return *this;
@@ -124,57 +156,134 @@ namespace CON
       delete it->second;
     }
     _children.clear();
+    for ( Array::iterator it = _array.begin(); it != _array.end() ; ++it )
+    {
+      delete *it;
+    }
+    _array.clear();
+  }
+
+
+  void Object::setType( Type type )
+  {
+    if ( _type == type ) return;
+    switch( _type )
+    {
+      case Type::Null :
+        break;
+
+      case Type::String :
+      case Type::Numeric :
+      case Type::Boolean :
+        switch ( type )
+        {
+          case Type::String :
+          case Type::Numeric :
+          case Type::Boolean :
+            break;
+
+          case Type::Null :
+          case Type::Array :
+          case Type::Object :
+            _value.clear();
+            break;
+        }
+        break;
+
+      case Type::Array :
+        switch ( type )
+        {
+          case Type::Array :
+            break;
+
+          case Type::String :
+          case Type::Numeric :
+          case Type::Boolean :
+          case Type::Null :
+          case Type::Object :
+            for ( Array::iterator it = _array.begin(); it != _array.end() ; ++it )
+            {
+              delete *it;
+            }
+            _array.clear();
+            break;
+        }
+        break;
+
+      case Type::Object :
+        switch ( type )
+        {
+          case Type::Object :
+            break;
+
+          case Type::String :
+          case Type::Numeric :
+          case Type::Boolean :
+          case Type::Null :
+          case Type::Array :
+            for ( ObjectMap::iterator it = _children.begin(); it != _children.end(); ++it )
+            {
+              delete it->second;
+            }
+            _children.clear();
+            break;
+        }
+        break;
+    }
+
+    _type = type;
   }
 
 
   void Object::setValue( std::string val )
   {
+    setType( Type::String );
     _value = val;
-    _type = Type::String;
   }
 
 
   void Object::setValue( int val )
   {
+    setType( Type::Numeric );
     _value = std::to_string( val );
-    _type = Type::Numeric;
   }
 
 
   void Object::setValue( long val )
   {
+    setType( Type::Numeric );
     _value = std::to_string( val );
-    _type = Type::Numeric;
   }
 
 
   void Object::setValue( float val )
   {
+    setType( Type::Numeric );
     _value = std::to_string( val );
-    _type = Type::Numeric;
   }
 
 
   void Object::setValue( double val )
   {
+    setType( Type::Numeric );
     _value = std::to_string( val );
-    _type = Type::Numeric;
   }
 
 
   void Object::setValue( bool val )
   {
+    setType( Type::Boolean );
     if ( val )
       _value = "true";
     else
       _value = "false";
-
-    _type = Type::Boolean;
   }
 
 
   void Object::addChild( std::string name, Object obj )
   {
+    setType( Type::Object );
+
     ObjectMap::iterator found = _children.find( name );
     if ( found != _children.end() )
     {
@@ -223,7 +332,7 @@ namespace CON
         }
         else
         {
-          throw Exception( "String is not a valid numeric type" );
+          throw Exception( "String is not a valid numeric type." );
         }
         break;
 
@@ -235,12 +344,15 @@ namespace CON
         }
         else
         {
-          throw Exception( "String is not a valid boolean type" );
+          throw Exception( "String is not a valid boolean type." );
         }
         break;
 
       case Type::Object :
-        throw Exception( "Cannot set an child object without an identifier. Use addChild() instead." );
+        throw Exception( "Cannot set a value for an object type." );
+
+      case Type::Array :
+        throw Exception( "Cannot set a value for an array type." );
     }
   }
 
@@ -373,6 +485,67 @@ namespace CON
   }
 
 
+  void Object::push( Object& obj )
+  {
+    setType( Type::Array );
+    _array.push_back( new Object( obj ) );
+  }
+
+
+  void Object::push( std::string s )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::String );
+    obj->setValue( s );
+    _array.push_back( obj );
+  }
+
+
+  void Object::push( char c )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::String );
+    obj->setValue( c );
+    _array.push_back( obj );
+  }
+
+
+  void Object::push( int i )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::Numeric );
+    obj->setValue( i );
+    _array.push_back( obj );
+  }
+
+
+  void Object::push( long l )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::Numeric );
+    obj->setValue( l );
+    _array.push_back( obj );
+  }
+
+
+  void Object::push( float f )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::Numeric );
+    obj->setValue( f );
+    _array.push_back( obj );
+  }
+
+
+  void Object::push( double d )
+  {
+    setType( Type::Array );
+    Object* obj = new Object( Type::Numeric );
+    obj->setValue( d );
+    _array.push_back( obj );
+  }
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
   // The parsing data structures
 
@@ -488,9 +661,8 @@ namespace CON
   {
     auto indentLambda = [ &output, &indent ]() { for ( size_t i = 0; i < indent; ++i ) output << "  "; };
 
-    if ( obj._children.size() > 0 )
+    if ( obj._type == Type::Object )
     {
-      output << '\n';
       indentLambda();
       output << "{" << '\n';
       ++indent;
@@ -498,6 +670,7 @@ namespace CON
       {
         indentLambda();
         output << it->first << " : ";
+        if ( it->second->getType() == Type::Object || it->second->getType() == Type::Array ) output << '\n';
         printObject( *it->second, output, indent );
         if ( it != ( --obj._children.end() ) )
         {
@@ -511,6 +684,28 @@ namespace CON
       --indent;
       indentLambda();
       output << "}";
+    }
+    else if ( obj._type == Type::Array )
+    {
+      indentLambda();
+      output << "[" << '\n';
+      ++indent;
+      for ( Object::Array::iterator it = obj._array.begin(); it != obj._array.end(); ++it )
+      {
+        if ( (*it)->getType() != Type::Object && (*it)->getType() != Type::Array ) indentLambda();
+        printObject( *(*it), output, indent );
+        if ( it != ( --obj._array.end() ) )
+        {
+          output << ",\n";
+        }
+        else
+        {
+          output << "\n";
+        }
+      }
+      --indent;
+      indentLambda();
+      output << "]";
     }
     else
     {
@@ -532,10 +727,8 @@ namespace CON
           output << obj._value;
           break;
 
-        case Type::Object :
-          output << '\n';
-          indentLambda();
-          output << "{}";
+        default:
+          // This should be impossible
           break;
       }
     }
