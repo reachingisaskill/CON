@@ -15,11 +15,30 @@ namespace CON
 {
 
 ////////////////////////////////////////////////////////////////////////////////
+  // Forward Declarations
+  class Object;
+
+
+////////////////////////////////////////////////////////////////////////////////
   // Data types for the values
   enum class Type { Null, String, Integer, Float, Boolean, Object };
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
+  // Creation functions
+  // Specify filename
+  Object* buildFromFile( std::string );
+
+  // Specify complete string
+  Object* buildFromString( std::string& );
+
+  // Specify input stream
+  Object* buildFromStream( std::istream& );
+
+
+////////////////////////////////////////////////////////////////////////////////
+  // Custom exception class
   class Exception : public std::exception
   {
     public:
@@ -37,14 +56,14 @@ namespace CON
 
     public:
       // Parse error built from filname, line num, error
-      Exception( std::string, size_t, std::string );
+      Exception( size_t, std::string );
 
       // Other crap went wrong
       explicit Exception( std::string );
 
 
       // Return a short summary
-      virtual const char* what() const override;
+      virtual const char* what() const noexcept override;
 
       // Number of errors
       size_t number() const { return _errors.size(); }
@@ -69,15 +88,9 @@ namespace CON
       // String holding the literal value
       std::string _value;
 
-      // Prase an exising stream
-      Object( std::istream&, size_t& );
-
-      // The actual loading happens here
-      void _load( std::istream&, size_t& );
-
     public:
       // Initialise with a file name.
-      explicit Object( std::string );
+      Object();
 
       // Clearup the memory. Delete children too!
       ~Object();
@@ -85,6 +98,13 @@ namespace CON
 
       // If it has children it must be an object
       bool isObject() const { return _children.size() > 0; }
+
+
+      // Set the value string
+      void setValue( std::string );
+
+      // Add a child to the map
+      void addChild( std::string, Object* );
 
 
       // Return different interpretations of the value
@@ -99,9 +119,10 @@ namespace CON
       // Boolean
       bool asBool() const;
 
+
       // Return a child
-      Object& get( std::string ) const;
-      Object& operator[]( std::string id ) const { return this->get( id ); }
+      Object* get( std::string ) const;
+      Object* operator[]( std::string id ) const { return this->get( id ); }
   };
 
 }

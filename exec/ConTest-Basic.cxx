@@ -9,9 +9,26 @@ int main( int, char** )
 
   std::cout << "Building root CON object." << std::endl;
 
-  CON::Object test_obj( "./dat/test-basic.con" );
+  try
+  {
+    CON::Object* object = CON::buildFromFile( "./dat/test-basic.con" );
 
-  std::cout << "Built\n\nIdentifier = " << object["identifier"].asString();
+    std::cout << object->get( "identifier" )->asString() << std::endl;
+    std::cout << object->get( "another_id" )->asFloat() << std::endl;
+    std::cout << object->get( "some_stuff" )->asString() << std::endl;
+    std::cout << std::endl;
+    std::cout << object->get( "sub_object" )->get( "yo" )->asString() << std::endl;
+
+  }
+  catch ( CON::Exception& ex )
+  {
+    std::cerr << "Error : " << ex.what() << std::endl;
+
+    for ( CON::Exception::iterator it = ex.begin(); it != ex.end(); ++it )
+    {
+      std::cerr << (*it) << std::endl;
+    }
+  }
 
   return 0;
 }

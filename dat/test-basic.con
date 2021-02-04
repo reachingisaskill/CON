@@ -1,3 +1,15 @@
 {
-  identifier : "Some value"
+  identifier : "Some \value",
+  another_id : 47.2,
+  some_stuff : true,
+
+# This is a comment \
+
+
+  sub_object : # An inline comment
+  {
+    id : " \"hello\" ",
+    yo : "this is a 
+long string..."
+  }
 }
