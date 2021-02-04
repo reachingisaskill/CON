@@ -89,6 +89,8 @@ namespace CON
     {
       throw Exception( "Cannot cast object to string" );
     }
+
+    return _value;
   }
 
 
@@ -99,12 +101,8 @@ namespace CON
       throw Exception( "Cannot cast object to integer" );
     }
 
-    int result;
-    result << _value;
-    if ( _value.fail() )
-    {
-      throw Exception( "Could not convert object to integer" );
-    }
+    int result = stoi( _value );
+
     return result;
   }
 
@@ -116,12 +114,8 @@ namespace CON
       throw Exception( "Cannot cast object to float" );
     }
 
-    float result;
-    result << _value;
-    if ( _value.fail() )
-    {
-      throw Exception( "Could not convert object to float" );
-    }
+    float result = stof( _value );
+
     return result;
   }
 
@@ -133,12 +127,8 @@ namespace CON
       throw Exception( "Cannot cast object to double" );
     }
 
-    double result;
-    result << _value;
-    if ( _value.fail() )
-    {
-      throw Exception( "Could not convert object to double" );
-    }
+    double result = std::stod( _value );
+
     return result;
   }
 
