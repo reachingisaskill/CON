@@ -16,25 +16,30 @@ namespace CON
 
 ////////////////////////////////////////////////////////////////////////////////
   // Forward Declarations
+  // Primary object class
   class Object;
+  class Exception;
+  struct ParseError;
 
 
 ////////////////////////////////////////////////////////////////////////////////
   // Data types for the values
   enum class Type { Null, String, Integer, Float, Boolean, Object };
 
+  // List of errors
+  typedef std::vector<std::string> ErrorList;
 
 
 ////////////////////////////////////////////////////////////////////////////////
   // Creation functions
   // Specify filename
-  Object* buildFromFile( std::string );
+  Object buildFromFile( std::string );
 
   // Specify complete string
-  Object* buildFromString( std::string& );
+  Object buildFromString( std::string& );
 
   // Specify input stream
-  Object* buildFromStream( std::istream& );
+  Object buildFromStream( std::istream& );
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,11 +47,14 @@ namespace CON
   class Exception : public std::exception
   {
     public:
-      typedef std::list< std::string >::const_iterator iterator;
+      typedef ErrorList::const_iterator iterator;
 
     private:
       // List the specific errors
-      std::list< std::string > _errors;
+      ErrorList _errors;
+
+      // If needed, have the filename
+      std::string _filename;
 
       // Cache the what string
       std::string _what;
@@ -56,7 +64,7 @@ namespace CON
 
     public:
       // Parse error built from filname, line num, error
-      Exception( size_t, std::string );
+      Exception( ErrorList& );
 
       // Other crap went wrong
       explicit Exception( std::string );
@@ -71,6 +79,9 @@ namespace CON
       // Basic iteration
       iterator begin() const { return _errors.begin(); }
       iterator end() const { return _errors.end(); }
+
+      // Set a file name if its relevant
+      void setFilename( std::string );
   };
 
 
@@ -89,10 +100,22 @@ namespace CON
       std::string _value;
 
     public:
-      // Initialise with a file name.
+      // Initialise empty object
       Object();
 
-      // Clearup the memory. Delete children too!
+      // Copy constructions
+      Object( const Object& );
+
+      // Move constructions
+      Object( Object&& );
+
+      // Copy assign
+      Object& operator=( const Object& );
+
+      // Move assign
+      Object& operator=( Object&& );
+
+      // Clearup the memory. Delete all the children
       ~Object();
 
 
@@ -104,7 +127,7 @@ namespace CON
       void setValue( std::string );
 
       // Add a child to the map
-      void addChild( std::string, Object* );
+      void addChild( std::string, Object );
 
 
       // Return different interpretations of the value
@@ -121,8 +144,13 @@ namespace CON
 
 
       // Return a child
-      Object* get( std::string ) const;
-      Object* operator[]( std::string id ) const { return this->get( id ); }
+      Object& get( std::string );
+      Object& operator[]( std::string id ) { return this->get( id ); }
+      const Object& get( std::string ) const;
+      const Object& operator[]( std::string id ) const { return this->get( id ); }
+
+      // Debug Print function
+      void print( std::ostream&, size_t depth = 0 );
   };
 
 }

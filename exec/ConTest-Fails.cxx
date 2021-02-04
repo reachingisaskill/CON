@@ -11,19 +11,13 @@ int main( int, char** )
 
   try
   {
-    CON::Object object = CON::buildFromFile( "./dat/test-basic.con" );
+    CON::Object object = CON::buildFromFile( "./dat/test-fail1.con" );
 
     std::cout << object.get( "identifier" ).asString() << std::endl;
     std::cout << object.get( "another_id" ).asFloat() << std::endl;
     std::cout << object.get( "some_stuff" ).asString() << std::endl;
     std::cout << std::endl;
     std::cout << object.get( "sub_object" ).get( "yo" ).asString() << std::endl;
-    std::cout << std::endl;
-//    std::cout << object.get( "sub_file" ).get( "ID" ).asString() << std::endl;
-
-    std::cout << std::endl;
-
-    object.print( std::cout );
 
   }
   catch ( CON::Exception& ex )

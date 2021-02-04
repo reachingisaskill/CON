@@ -1,11 +1,10 @@
 {
-  identifier : "Some \value",
-  another_id : 47.2,
-  some_stuff : true,
+  identifier  "Some \value",
+  another_id : 47.2
+  some_stuff : tru,
 
 # This is a comment \
 
-  sub_file : <./dat/test-subfile.con>,
 
   sub_object : # An inline comment
   {
