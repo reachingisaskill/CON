@@ -24,7 +24,7 @@ namespace CON
 
 ////////////////////////////////////////////////////////////////////////////////
   // Data types for the values
-  enum class Type { Null, String, Integer, Float, Boolean, Object };
+  enum class Type { Null, String, Numeric, Boolean, Object };
 
   // List of errors
   typedef std::vector<std::string> ErrorList;
@@ -40,6 +40,10 @@ namespace CON
 
   // Specify input stream
   Object buildFromStream( std::istream& );
+
+  // Writing functions
+  // Output to stream
+  void writeToStream( Object&, std::ostream& );
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +93,9 @@ namespace CON
   // Basic hierarchical object
   class Object
   {
+    // Easier for writing to be a friend
+    friend void printObject( Object&, std::ostream&, size_t );
+
     // Mapping of identifier to object pointer
     typedef std::map<std::string, Object*> ObjectMap;
 
@@ -98,6 +105,9 @@ namespace CON
 
       // String holding the literal value
       std::string _value;
+
+      // Type of value stored
+      Type _type;
 
     public:
       // Initialise empty object
@@ -122,9 +132,29 @@ namespace CON
       // If it has children it must be an object
       bool isObject() const { return _children.size() > 0; }
 
+      // Return true if a child node exists with that name
+      bool has( std::string ) const;
+
+      // If the object exists but has not data
+      bool isNull() const { return _type == Type::Null; }
+
 
       // Set the value string
+      void setRawValue( std::string, Type );
+      // Set the value string
       void setValue( std::string );
+//      void setValue( char );
+      void setValue( int );
+      void setValue( long );
+      void setValue( float );
+      void setValue( double );
+      void setValue( bool );
+//      void setValue( unsigned char );
+//      void setValue( unsigned int );
+//      void setValue( unsigned long );
+//      void setValue( unsigned float );
+//      void setValue( unsigned double );
+
 
       // Add a child to the map
       void addChild( std::string, Object );
@@ -133,6 +163,8 @@ namespace CON
       // Return different interpretations of the value
       // String
       const std::string& asString() const;
+      // Character
+      char asChar() const;
       // Integer
       int asInt() const;
       // Float
@@ -148,9 +180,6 @@ namespace CON
       Object& operator[]( std::string id ) { return this->get( id ); }
       const Object& get( std::string ) const;
       const Object& operator[]( std::string id ) const { return this->get( id ); }
-
-      // Debug Print function
-      void print( std::ostream&, size_t depth = 0 );
   };
 
 }

@@ -11,6 +11,12 @@ namespace CON
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Some useful function declarations
+
+  bool validateNumeric( std::string );
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
   // Exception function definiions
 
   Exception::Exception( ErrorList& errors ) :
@@ -49,14 +55,16 @@ namespace CON
 
   Object::Object() :
     _children(),
-    _value()
+    _value(),
+    _type( Type::Null )
   {
   }
 
 
   Object::Object( const Object& other ) :
     _children(),
-    _value( other._value )
+    _value( other._value ),
+    _type( other._type )
   {
     for ( ObjectMap::const_iterator it = other._children.begin(); it != other._children.end() ; ++it )
     {
@@ -67,7 +75,8 @@ namespace CON
 
   Object::Object( Object&& other ) :
     _children( std::move( other._children ) ),
-    _value( std::move( other._value ) )
+    _value( std::move( other._value ) ),
+    _type( std::move( other._type ) )
   {
   }
 
@@ -81,6 +90,7 @@ namespace CON
     _children.clear();
 
     _value = other._value;
+    _type = other._type;
 
     for ( ObjectMap::const_iterator it = other._children.begin(); it != other._children.end() ; ++it )
     {
@@ -101,6 +111,7 @@ namespace CON
 
     _value = std::move( other._value );
     _children = std::move( other._children );
+    _type = std::move( other._type );
 
     return *this;
   }
@@ -119,6 +130,46 @@ namespace CON
   void Object::setValue( std::string val )
   {
     _value = val;
+    _type = Type::String;
+  }
+
+
+  void Object::setValue( int val )
+  {
+    _value = std::to_string( val );
+    _type = Type::Numeric;
+  }
+
+
+  void Object::setValue( long val )
+  {
+    _value = std::to_string( val );
+    _type = Type::Numeric;
+  }
+
+
+  void Object::setValue( float val )
+  {
+    _value = std::to_string( val );
+    _type = Type::Numeric;
+  }
+
+
+  void Object::setValue( double val )
+  {
+    _value = std::to_string( val );
+    _type = Type::Numeric;
+  }
+
+
+  void Object::setValue( bool val )
+  {
+    if ( val )
+      _value = "true";
+    else
+      _value = "false";
+
+    _type = Type::Boolean;
   }
 
 
@@ -137,14 +188,87 @@ namespace CON
   }
 
 
+  bool Object::has( std::string name ) const
+  {
+    if ( _children.find( name ) != _children.end() )
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+
+  void Object::setRawValue( std::string string, Type type )
+  {
+    switch ( type )
+    {
+      case Type::Null :
+        _value = "";
+        _type = type;
+        break;
+
+      case Type::String :
+        _value = string;
+        _type = type;
+        break;
+
+      case Type::Numeric :
+        if ( validateNumeric( string ) )
+        {
+          _value = string;
+          _type = type;
+        }
+        else
+        {
+          throw Exception( "String is not a valid numeric type" );
+        }
+        break;
+
+      case Type::Boolean :
+        if ( ( string == "true" ) || ( string == "false" ) )
+        {
+          _value = string;
+          _type = type;
+        }
+        else
+        {
+          throw Exception( "String is not a valid boolean type" );
+        }
+        break;
+
+      case Type::Object :
+        throw Exception( "Cannot set an child object without an identifier. Use addChild() instead." );
+    }
+  }
+
+
   const std::string& Object::asString() const
   {
     if ( this->isObject() )
     {
-      throw Exception( "Cannot cast object to string" );
+      throw Exception( "Cannot cast object to a value type." );
     }
 
     return _value;
+  }
+
+
+  char Object::asChar() const
+  {
+    if ( this->isObject() )
+    {
+      throw Exception( "Cannot cast object to value type." );
+    }
+
+    if ( _type != Type::String )
+    {
+      throw Exception( "Type is not numeric. Cannot convert to int." );
+    }
+
+    return _value[0];
   }
 
 
@@ -152,12 +276,15 @@ namespace CON
   {
     if ( this->isObject() )
     {
-      throw Exception( "Cannot cast object to integer" );
+      throw Exception( "Cannot cast object to value type." );
     }
 
-    int result = stoi( _value );
+    if ( _type != Type::Numeric )
+    {
+      throw Exception( "Type is not numeric. Cannot convert to int." );
+    }
 
-    return result;
+    return std::stoi( _value );
   }
 
 
@@ -165,12 +292,15 @@ namespace CON
   {
     if ( this->isObject() )
     {
-      throw Exception( "Cannot cast object to float" );
+      throw Exception( "Cannot cast object to a value type." );
     }
 
-    float result = stof( _value );
+    if ( _type != Type::Numeric )
+    {
+      throw Exception( "Type is not numeric. Cannot convert to int." );
+    }
 
-    return result;
+    return std::stof( _value );
   }
 
 
@@ -178,12 +308,15 @@ namespace CON
   {
     if ( this->isObject() )
     {
-      throw Exception( "Cannot cast object to double" );
+      throw Exception( "Cannot cast object to a value type." );
     }
 
-    double result = std::stod( _value );
+    if ( _type != Type::Numeric )
+    {
+      throw Exception( "Type is not numeric. Cannot convert to int." );
+    }
 
-    return result;
+    return std::stod( _value );
   }
 
 
@@ -191,11 +324,22 @@ namespace CON
   {
     if ( this->isObject() )
     {
-      throw Exception( "Cannot cast object to bool" );
+      throw Exception( "Cannot cast object to a value type." );
     }
 
-    bool result = true;
-    return result;
+    if ( _type != Type::Boolean )
+    {
+      throw Exception( "Type is not boolean. Cannot convert to int." );
+    }
+
+    if ( _value == "true" )
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
   }
 
 
@@ -229,33 +373,6 @@ namespace CON
   }
 
 
-  void Object::print( std::ostream& output, size_t indent )
-  {
-    auto indentLambda = [ &output, &indent ]() { for ( size_t i = 0; i < indent; ++i ) output << "  "; };
-
-    if ( _children.size() > 0 )
-    {
-      output << '\n';
-      indentLambda();
-      output << "{" << '\n';
-      ++indent;
-      for ( ObjectMap::iterator it = _children.begin(); it != _children.end(); ++it )
-      {
-        indentLambda();
-        output << it->first << " : ";
-        it->second->print( output, indent );
-      }
-      --indent;
-      indentLambda();
-      output << "{" << '\n';
-    }
-    else
-    {
-      output << '\"' << _value << "\",\n";
-    }
-  }
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
   // The parsing data structures
 
@@ -283,36 +400,161 @@ namespace CON
   }
 
   // Validates a string to be numeric or boolean exactly
-  bool validateExpression( std::string& text )
+  bool validateExpression( std::string& text, Type& valid_type )
   {
-    if ( text == "true" ) return true;
-    else if ( text == "false" ) return true;
+    if ( text == "true" )
+    {
+      valid_type = Type::Boolean;
+      return true;
+    }
+    else if ( text == "false" )
+    {
+      valid_type = Type::Boolean;
+      return true;
+    }
+    else if ( text == "null" )
+    {
+      valid_type = Type::Null;
+      return true;
+    }
+    else if ( validateNumeric( text ) )
+    {
+      valid_type = Type::Numeric;
+      return true;
+    }
     else
     {
-      bool digit = false;
-      bool point = false;
-      for ( std::string::const_iterator it = text.begin(); it != text.end(); ++it )
+      valid_type = Type::String;
+      return false;
+    }
+  }
+
+
+  bool validateNumeric( std::string text )
+  {
+    bool digit = false;
+    bool point = false;
+    for ( std::string::const_iterator it = text.begin(); it != text.end(); ++it )
+    {
+      if ( std::isdigit( *it ) )
       {
-        if ( std::isdigit( *it ) )
+        digit = true;
+      }
+      else if ( ( (*it) == '-' ) || ( (*it) == '+' ) )
+      {
+        if ( digit ) return false;
+      }
+      else if ( (*it) == '.' )
+      {
+        if ( point ) return false;
+        if ( ! digit ) return false;
+      }
+      else
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+  // The writing logic
+
+  void parseQuote( std::ostream& output, const std::string& text )
+  {
+    output << "\"";
+    for ( std::string::const_iterator it = text.begin(); it != text.end(); ++it )
+    {
+      switch ( *it )
+      {
+        case '"' :
+          output << "\\\"";
+          break;
+
+        case '\\' :
+          output << "\\\\";
+          break;
+
+        default :
+          output << *it;
+      }
+    }
+    output << "\"";
+  }
+
+
+  void printObject( Object& obj, std::ostream& output, size_t indent )
+  {
+    auto indentLambda = [ &output, &indent ]() { for ( size_t i = 0; i < indent; ++i ) output << "  "; };
+
+    if ( obj._children.size() > 0 )
+    {
+      output << '\n';
+      indentLambda();
+      output << "{" << '\n';
+      ++indent;
+      for ( Object::ObjectMap::iterator it = obj._children.begin(); it != obj._children.end(); ++it )
+      {
+        indentLambda();
+        output << it->first << " : ";
+        printObject( *it->second, output, indent );
+        if ( it != ( --obj._children.end() ) )
         {
-          digit = true;
-        }
-        else if ( ( (*it) == '-' ) || ( (*it) == '+' ) )
-        {
-          if ( digit ) return false;
-        }
-        else if ( (*it) == '.' )
-        {
-          if ( point ) return false;
-          if ( ! digit ) return false;
+          output << ",\n";
         }
         else
         {
-          return false;
+          output << "\n";
         }
       }
-      return true;
+      --indent;
+      indentLambda();
+      output << "}";
     }
+    else
+    {
+      switch( obj._type )
+      {
+        case Type::Null :
+          output << "null";
+          break;
+
+        case Type::String :
+          parseQuote( output, obj._value );
+          break;
+
+        case Type::Numeric :
+          output << obj._value;
+          break;
+
+        case Type::Boolean :
+          output << obj._value;
+          break;
+
+        case Type::Object :
+          output << '\n';
+          indentLambda();
+          output << "{}";
+          break;
+      }
+    }
+  }
+
+
+  void writeToStream( Object& obj, std::ostream& output )
+  {
+    printObject( obj, output, 0 );
+    output << std::endl;
+  }
+
+
+  void writeToString( Object& obj, std::string& output )
+  {
+    std::stringstream ss;
+    printObject( obj, ss, 0 );
+    ss << std::endl;
+    output = ss.str();
   }
 
 
@@ -713,7 +955,7 @@ namespace CON
     // The empty object
     if ( current->type == Token::CloseBracket )
     {
-      start = current;
+      start = ++current;
       return object;
     }
 
@@ -759,14 +1001,15 @@ namespace CON
       }
       else if ( current->type == Token::Text ) 
       {
-        if ( ! validateExpression( current->string ) )
+        Type valid_type;
+        if ( ! validateExpression( current->string, valid_type ) )
         {
           errors.push_back( makeError( current->lineNumber, std::string( "Invalid expression. Must be boolean, numeric or string" ) ) );
         }
         else
         {
           Object child;
-          child.setValue( current->string );
+          child.setRawValue( current->string, valid_type );
           object.addChild( identifier, child );
         }
 

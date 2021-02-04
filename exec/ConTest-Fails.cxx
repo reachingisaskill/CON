@@ -13,6 +13,8 @@ int main( int, char** )
   {
     CON::Object object = CON::buildFromFile( "./dat/test-fail1.con" );
 
+    writeToStream( object, std::cout );
+
     std::cout << object.get( "identifier" ).asString() << std::endl;
     std::cout << object.get( "another_id" ).asFloat() << std::endl;
     std::cout << object.get( "some_stuff" ).asString() << std::endl;

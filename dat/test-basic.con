@@ -3,6 +3,8 @@
   another_id : 47.2,
   some_stuff : true,
 
+  empty_object : {},
+
 # This is a comment \
 
   sub_file : <./dat/test-subfile.con>,
