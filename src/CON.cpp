@@ -164,6 +164,32 @@ namespace CON
   }
 
 
+  size_t Object::getSize() const
+  {
+    switch( _type )
+    {
+      case Type::Null :
+        return 0;
+        break;
+        
+      case Type::String :
+      case Type::Numeric :
+      case Type::Boolean :
+        return 1;
+        break;
+
+      case Type::Array :
+        return _array.size();
+          break;
+
+      case Type::Object :
+        return _children.size();
+          break;
+    }
+    return 0;
+  }
+
+
   void Object::setType( Type type )
   {
     if ( _type == type ) return;
@@ -236,6 +262,13 @@ namespace CON
 
 
   void Object::setValue( std::string val )
+  {
+    setType( Type::String );
+    _value = val;
+  }
+
+
+  void Object::setValue( const char* val )
   {
     setType( Type::String );
     _value = val;
@@ -359,9 +392,9 @@ namespace CON
 
   const std::string& Object::asString() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to a value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     return _value;
@@ -370,14 +403,14 @@ namespace CON
 
   char Object::asChar() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     if ( _type != Type::String )
     {
-      throw Exception( "Type is not numeric. Cannot convert to int." );
+      throw Exception( "Type is not string. Cannot convert to char." );
     }
 
     return _value[0];
@@ -386,9 +419,9 @@ namespace CON
 
   int Object::asInt() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     if ( _type != Type::Numeric )
@@ -402,14 +435,14 @@ namespace CON
 
   float Object::asFloat() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to a value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     if ( _type != Type::Numeric )
     {
-      throw Exception( "Type is not numeric. Cannot convert to int." );
+      throw Exception( "Type is not numeric. Cannot convert to float." );
     }
 
     return std::stof( _value );
@@ -418,14 +451,14 @@ namespace CON
 
   double Object::asDouble() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to a value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     if ( _type != Type::Numeric )
     {
-      throw Exception( "Type is not numeric. Cannot convert to int." );
+      throw Exception( "Type is not numeric. Cannot convert to double." );
     }
 
     return std::stod( _value );
@@ -434,14 +467,14 @@ namespace CON
 
   bool Object::asBool() const
   {
-    if ( this->isObject() )
+    if ( _type == Type::Object || _type == Type::Array )
     {
-      throw Exception( "Cannot cast object to a value type." );
+      throw Exception( "Cannot cast object or arrays to a value type." );
     }
 
     if ( _type != Type::Boolean )
     {
-      throw Exception( "Type is not boolean. Cannot convert to int." );
+      throw Exception( "Type is not boolean." );
     }
 
     if ( _value == "true" )
@@ -457,6 +490,11 @@ namespace CON
 
   Object& Object::get( std::string identifier )
   {
+    if ( _type != Type::Object )
+    {
+      throw Exception( "Calling get(identifier) when not an object type" );
+    }
+
     ObjectMap::iterator found = _children.find( identifier );
     if ( found == _children.end() )
     {
@@ -472,6 +510,11 @@ namespace CON
 
   const Object& Object::get( std::string identifier ) const
   {
+    if ( _type != Type::Object )
+    {
+      throw Exception( "Calling get(identifier) when not an object type" );
+    }
+
     ObjectMap::const_iterator found = _children.find( identifier );
     if ( found == _children.end() )
     {
@@ -482,6 +525,42 @@ namespace CON
     }
 
     return *found->second;
+  }
+
+
+  Object& Object::get( size_t id )
+  {
+    if ( _type != Type::Array )
+    {
+      throw Exception( "Calling get(size_t) when not an array type" );
+    }
+
+    if ( id > _array.size() )
+    {
+      std::stringstream string;
+      string << "Array index " << id << " outside array bounds: " << _array.size();
+      throw Exception( string.str() );
+    }
+
+    return *_array[id];
+  }
+
+
+  const Object& Object::get( size_t id ) const
+  {
+    if ( _type != Type::Array )
+    {
+      throw Exception( "Calling get(size_t) when not an array type" );
+    }
+
+    if ( id > _array.size() )
+    {
+      std::stringstream string;
+      string << "Array index " << id << " outside array bounds: " << _array.size();
+      throw Exception( string.str() );
+    }
+
+    return *_array[id];
   }
 
 
@@ -547,11 +626,87 @@ namespace CON
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Comparison operators
+
+  bool Object::operator==( Object& other ) const
+  {
+    if ( other._type != this->_type ) 
+    {
+      return false;
+    }
+
+    switch( _type )
+    {
+      case Type::Null:
+        return true;
+        break;
+
+      case Type::String :
+      case Type::Numeric :
+      case Type::Boolean :
+        if ( this->_value == other._value )
+        {
+          return true;
+        }
+        else
+        {
+          return false;
+        }
+        break;
+
+      case Type::Array :
+        {
+          Array::const_iterator this_it = this->_array.begin();
+          Array::const_iterator that_it = other._array.begin();
+          while ( this_it != this->_array.end() && that_it != other._array.end() )
+          {
+            if ( *(*this_it) != *(*that_it ) ) return false;
+            ++this_it;
+            ++that_it;
+          }
+          if ( this_it == this->_array.end() && that_it == other._array.end() ) return true;
+          else
+          {
+            return false;
+          }
+        }
+        break;
+
+      case Type::Object:
+        {
+          ObjectMap::const_iterator this_it = this->_children.begin();
+          ObjectMap::const_iterator that_it = other._children.begin();
+          while ( this_it != this->_children.end() && that_it != other._children.end() )
+          {
+            if ( this_it->first != that_it->first )
+            {
+              return false;
+            }
+            if ( *this_it->second != *that_it->second )
+            {
+              return false;
+            }
+            ++this_it;
+            ++that_it;
+          }
+          if ( this_it == this->_children.end() && that_it == other._children.end() ) return true;
+          else
+          {
+            return false;
+          }
+        }
+    }
+
+    return true;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
   // The parsing data structures
 
   struct Token
   {
-    enum Type { Text, Quote, Colon, Comma, OpenBracket, CloseBracket, Comment, Filepath };
+    enum Type { Text, Quote, Colon, Comma, OpenObject, CloseObject, OpenArray, CloseArray, Comment, Filepath };
 
     std::string string;
     Type type;
@@ -562,6 +717,7 @@ namespace CON
   // Turn a vector of tokens into a complete object tree
   Object parseTokens( std::vector<Token>::iterator&, std::vector<Token>::iterator&, ErrorList& );
 
+  void parseArray( std::vector<Token>::iterator&, std::vector<Token>::iterator&, ErrorList&, Object& );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
   // Errors and validation
@@ -571,6 +727,7 @@ namespace CON
     ss << "Error on line " << ln << ": " << err << '.';
     return ss.str();
   }
+
 
   // Validates a string to be numeric or boolean exactly
   bool validateExpression( std::string& text, Type& valid_type )
@@ -965,7 +1122,7 @@ namespace CON
                 {
                   Token new_token;
                   new_token.string = '{';
-                  new_token.type = Token::OpenBracket;
+                  new_token.type = Token::OpenObject;
                   new_token.lineNumber = lineNumber;
                   tokens.push_back( new_token );
                 }
@@ -974,21 +1131,73 @@ namespace CON
 
 
             case '}' :
-              if ( current_string.size() > 0 )
+              if ( escape ) current_string.push_back( '}' );
+              else
               {
-                Token new_token;
-                new_token.string = current_string;
-                new_token.type = current_type;
-                new_token.lineNumber = lineNumber;
-                tokens.push_back( new_token );
-                current_string.clear();
+                if ( current_string.size() > 0 )
+                {
+                  Token new_token;
+                  new_token.string = current_string;
+                  new_token.type = current_type;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                  current_string.clear();
+                }
+                {
+                  Token new_token;
+                  new_token.string = '}';
+                  new_token.type = Token::CloseObject;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                }
               }
+              break;
+
+
+            case '[' :
+              if ( escape ) current_string.push_back( '[' );
+              else
               {
-                Token new_token;
-                new_token.string = '}';
-                new_token.type = Token::CloseBracket;
-                new_token.lineNumber = lineNumber;
-                tokens.push_back( new_token );
+                if ( current_string.size() > 0 )
+                {
+                  Token new_token;
+                  new_token.string = current_string;
+                  new_token.type = current_type;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                  current_string.clear();
+                }
+                {
+                  Token new_token;
+                  new_token.string = '[';
+                  new_token.type = Token::OpenArray;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                }
+              }
+              break;
+
+
+            case ']' :
+              if ( escape ) current_string.push_back( ']' );
+              else
+              {
+                if ( current_string.size() > 0 )
+                {
+                  Token new_token;
+                  new_token.string = current_string;
+                  new_token.type = current_type;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                  current_string.clear();
+                }
+                {
+                  Token new_token;
+                  new_token.string = ']';
+                  new_token.type = Token::CloseArray;
+                  new_token.lineNumber = lineNumber;
+                  tokens.push_back( new_token );
+                }
               }
               break;
 
@@ -1080,44 +1289,53 @@ namespace CON
       }
     }
 
-//    for ( std::vector<Token>::iterator it = tokens.begin(); it != tokens.end(); ++it )
-//    {
-//      std::cout << "Token : ";
-//      switch( it->type )
-//      {
-//        case Token::Text :
-//          std::cout << " Text ";
-//          break;
-//        case Token::Quote :
-//          std::cout << " Quote ";
-//          break;
-//        case Token::Colon :
-//          std::cout << " Colon ";
-//          break;
-//        case Token::Comma :
-//          std::cout << " Comma ";
-//          break;
-//        case Token::OpenBracket :
-//          std::cout << " OpenBracket ";
-//          break;
-//        case Token::CloseBracket :
-//          std::cout << " CloseBracket ";
-//          break;
-//        case Token::Comment :
-//          std::cout << " Comment ";
-//          break;
-//        case Token::Filepath :
-//          std::cout << " File ";
-//          break;
-//      }
-//      std::cout << it->lineNumber << " : " << it->string << std::endl;
-//    }
+    /*
+    // Useful debugging loop
+    for ( std::vector<Token>::iterator it = tokens.begin(); it != tokens.end(); ++it )
+    {
+      std::cout << "Token : ";
+      switch( it->type )
+      {
+        case Token::Text :
+          std::cout << " Text ";
+          break;
+        case Token::Quote :
+          std::cout << " Quote ";
+          break;
+        case Token::Colon :
+          std::cout << " Colon ";
+          break;
+        case Token::Comma :
+          std::cout << " Comma ";
+          break;
+        case Token::OpenObject :
+          std::cout << " OpenObject ";
+          break;
+        case Token::CloseObject :
+          std::cout << " CloseObject ";
+          break;
+        case Token::OpenArray :
+          std::cout << " OpenArray ";
+          break;
+        case Token::CloseArray :
+          std::cout << " CloseArray ";
+          break;
+        case Token::Comment :
+          std::cout << " Comment ";
+          break;
+        case Token::Filepath :
+          std::cout << " File ";
+          break;
+      }
+      std::cout << it->lineNumber << " : " << it->string << std::endl;
+    }
+    */
 
     // Find the start of the root node
     std::vector<Token>::iterator root_begin = tokens.begin();
     std::vector<Token>::iterator root_end = tokens.end();
 
-    while( (root_begin != tokens.end()) && (root_begin->type != Token::OpenBracket) ) ++root_begin;
+    while( (root_begin != tokens.end()) && (root_begin->type != Token::OpenObject) ) ++root_begin;
 
     if ( root_begin == tokens.end() )
     {
@@ -1143,10 +1361,10 @@ namespace CON
     }
 
     std::vector<Token>::iterator current = start;
-    Object object;
+    Object object( Type::Object );
 
     // The empty object
-    if ( current->type == Token::CloseBracket )
+    if ( current->type == Token::CloseObject )
     {
       start = ++current;
       return object;
@@ -1210,7 +1428,7 @@ namespace CON
       }
       else if ( current->type == Token::Quote )
       {
-        Object child;
+        Object child( Type::String );
 
         child.setValue( current->string );
         object.addChild( identifier, child );
@@ -1229,7 +1447,7 @@ namespace CON
         }
         ++current;
       }
-      else if ( current->type == Token::OpenBracket )
+      else if ( current->type == Token::OpenObject )
       {
         ++current;
         try
@@ -1237,6 +1455,19 @@ namespace CON
           object.addChild( identifier, parseTokens( current, end, errors ) );
         }
         catch( Exception& ex )
+        {
+          throw ex;
+        }
+      }
+      else if ( current->type == Token::OpenArray )
+      {
+        try
+        {
+          Object child( Type::Array );
+          parseArray( ++current, end, errors, child );
+          object.addChild( identifier, child );
+        }
+        catch ( Exception& ex )
         {
           throw ex;
         }
@@ -1258,7 +1489,7 @@ namespace CON
         ++current;
         continue;
       }
-      else if ( current->type == Token::CloseBracket )
+      else if ( current->type == Token::CloseObject )
       {
         start = ++current;
         return object;
@@ -1272,6 +1503,122 @@ namespace CON
 
     errors.push_back( makeError( start->lineNumber, "Closing bracket not found" ) );
     return object;
+  }
+
+
+  void parseArray( std::vector<Token>::iterator& start, std::vector<Token>::iterator& end, ErrorList& errors, Object& object )
+  {
+    if ( start == end )
+    {
+      throw Exception( "Unexpected end of file" );
+    }
+
+    std::vector<Token>::iterator current = start;
+
+    // The empty array
+    if ( current->type == Token::CloseArray )
+    {
+      start = ++current;
+      return;
+    }
+
+    while ( current != end )
+    {
+      if ( current->type == Token::Text )
+      {
+        Type valid_type;
+        if ( ! validateExpression( current->string, valid_type ) )
+        {
+          errors.push_back( makeError( current->lineNumber, std::string( "Invalid expression. Must be boolean, numeric or string" ) ) );
+        }
+        else
+        {
+          Object child( valid_type );
+          child.setRawValue( current->string, valid_type );
+          object.push( child );
+        }
+        ++current;
+      }
+      else if ( current->type == Token::Quote )
+      {
+        Object child;
+
+        child.setValue( current->string );
+        object.push( child );
+
+        ++current;
+      }
+      else if ( current->type == Token::Filepath )
+      {
+        try
+        {
+          Object child = buildFromFile( current->string );
+          object.push( child );
+        }
+        catch( Exception& ex )
+        {
+          throw ex;
+        }
+        ++current;
+      }
+      else if ( current->type == Token::OpenObject )
+      {
+        try
+        {
+          Object child = parseTokens( ++current, end, errors );
+          object.push( child );
+        }
+        catch( Exception& ex )
+        {
+          throw ex;
+        }
+      }
+      else if ( current->type == Token::OpenArray )
+      {
+        try
+        {
+          Object child( Type::Array );
+          parseArray( ++current, end, errors, child );
+          object.push( child );
+        }
+        catch ( Exception& ex )
+        {
+          throw ex;
+        }
+      }
+      else if ( current->type == Token::CloseArray )
+      {
+        errors.push_back( makeError( current->lineNumber, std::string( "Array ended unexpectedly" ) ) );
+        start = ++current;
+        return;
+      }
+      else
+      {
+        errors.push_back( makeError( current->lineNumber, std::string( "Expected valid value type, object or array within array defitinition" ) ) );
+        ++current;
+      }
+
+      if ( current->type == Token::Comma )
+      {
+        ++current;
+        continue;
+      }
+      else if ( current->type == Token::CloseArray )
+      {
+        start = ++current;
+        return;
+      }
+      else
+      {
+        errors.push_back( makeError( current->lineNumber, std::string( "Expected comma or closing bracket following array item" ) ) );
+        ++current;
+      }
+
+    }
+
+    errors.push_back( makeError( start->lineNumber, "Closing square bracket not found" ) );
+    start = current;
+    return;
   }
 
 }

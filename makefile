@@ -61,6 +61,7 @@ INSTALL_DIR =
 # The Compiler
 CCC = g++ -g  -Wall -Wextra -pedantic ${DEFINES}
 # CCC = g++ -O2 -Wall -Wextra -pedantic ${DEFINES} # Optimized Compilation
+AR = ar rcs
 
 
 ##############################################################################################
@@ -90,6 +91,7 @@ OBJECTS = $(patsubst %.cpp,$(TMP_DIR)/%.o,$(filter %.cpp,$(SRC_FILES)))
 EXE_OBJ = $(patsubst %.cxx,$(TMP_DIR)/%.o,${EXE_SRC})
 
 LIBRARY   = ${LIB_DIR}/lib${LIB_NAME}.so
+ARCHIVE   = ${LIB_DIR}/lib${LIB_NAME}.a
 PROGRAMS  = $(patsubst %.cxx,${BIN_DIR}/%,${EXE_SRC})
 PROGNAMES = $(notdir ${PROGRAMS})
 
@@ -99,7 +101,7 @@ PROGNAMES = $(notdir ${PROGRAMS})
 
 
 
-all : intro directories ${LIBRARY} ${PROGRAMS}
+all : intro directories ${LIBRARY} ${ARCHIVE} ${PROGRAMS}
 	@echo "Make Completed Successfully"
 	@echo
 
@@ -131,6 +133,12 @@ ${LIBRARY} : ${OBJECTS}
 	@echo " - Building Library : " ${LIB_NAME}
 	@${CCC} ${LIB_COMP_FLAGS} -o $@ $^ ${INC_FLAGS} ${LIB_FLAGS}
 	@echo "Library : "${LIB_NAME}" Successfully Built"
+	@echo
+
+${ARCHIVE} : ${OBJECTS}
+	@echo " - Building Static Library : " ${LIB_NAME}
+	@${AR} $@ $^
+	@echo "Static Library : "${LIB_NAME}" Successfully Built"
 	@echo
 
 
@@ -168,6 +176,8 @@ ${TMP_DIR} :
 clean :
 	rm -f ${TMP_DIR}/*
 	rm -f ${PROGRAMS}
+	rm -f ${LIBRARY}
+	rm -f ${ARCHIVE}
 
 purge :	directories
 	@echo "Purge will remove all files from temporary, library and binary directories."

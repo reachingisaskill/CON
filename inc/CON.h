@@ -11,6 +11,9 @@
 #include <list>
 
 
+#define CON_VERSION_STRING "0.1"
+
+
 namespace CON
 {
 
@@ -142,7 +145,12 @@ namespace CON
 ////////////////////////////////////////////////////////////////////////////////
       // Set the type for the object will destroy internal data if the types are not compatible
       void setType( Type );
+
+      // Return the current stored type
       Type getType() const { return _type; }
+
+      // Depending on the type, returns the array size, children size, 1 for value types or zero for null
+      size_t getSize() const;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,6 +167,7 @@ namespace CON
       void setRawValue( std::string, Type );
       // Set the value string
       void setValue( std::string );
+      void setValue( const char* );
 //      void setValue( char );
       void setValue( int );
       void setValue( long );
@@ -189,9 +198,6 @@ namespace CON
 ////////////////////////////////////////////////////////////////////////////////
       // If Type == Object
 
-      // If it has children it must be an object
-      bool isObject() const { return _children.size() > 0; }
-
       // Return true if a child node exists with that name
       bool has( std::string ) const;
 
@@ -217,11 +223,22 @@ namespace CON
       void push( float );
       void push( double );
 
+      // Fill from a vector
+      void fill( std::vector< Object >& );
+
       // Return a index value from the array
       Object& get( size_t );
       Object& operator[]( size_t id ) { return this->get( id ); }
       const Object& get( size_t ) const;
       const Object& operator[]( size_t id ) const { return this->get( id ); }
+
+
+////////////////////////////////////////////////////////////////////////////////
+      // Comparison operators
+
+      // See if they are identical copies
+      bool operator==( Object& ) const;
+      bool operator!=( Object& o ) const { return ! operator==( o ); }
   };
 
 }
