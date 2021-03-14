@@ -41,6 +41,11 @@ TMP_DIR = .temp
 EXE_SRC_DIR = exec
 
 
+# The headers to include when we install
+# Top level headers
+INSTALL_TOP_HEADERS = CON.h
+INSTALL_HEADERS =
+
 # Library Name
 LIB_NAME = CON
 
@@ -56,6 +61,10 @@ DEFINES =
 
 # Installation Directory
 INSTALL_DIR =
+
+
+# Local Deployment Directory
+DEPLOY_DIR = deploy
 
 
 # The Compiler
@@ -79,6 +88,10 @@ INC_FILES = ${shell ls $(INC_DIR)}
 
 # Executable Source Files
 EXE_SRC = $(filter %.cxx,${EXE_FILES})
+
+# Intallation headers
+INS_FILES = $(patsubst %.h,${INC_DIR}/%.h,$(filter %.h,$(INSTALL_HEADERS)))
+INS_TOP_FILES = $(patsubst %.h,${INC_DIR}/%.h,$(filter %.h,$(INSTALL_TOP_HEADERS)))
 
 
 
@@ -212,4 +225,21 @@ check_install :
 		echo                                    ;\
 		exit 1                                  ;\
 		fi
+
+
+deploy : ${LIBRARY}
+	@echo
+	@echo "Deploying to local directory: " ${DEPLOY_DIR}
+	@if [ -n "${INS_TOP_FILES}" ]; then                   \
+	  mkdir -p ${DEPLOY_DIR}/include                    ;\
+	  cp ${INS_TOP_FILES} ${DEPLOY_DIR}/include         ;\
+	fi
+	@if [ -n "${INS_FILES}" ]; then                       \
+	  mkdir -p ${DEPLOY_DIR}/include/${LIB_NAME}        ;\
+	  cp ${INS_FILES} ${DEPLOY_DIR}/include/${LIB_NAME} ;\
+	fi
+	@mkdir -p ${DEPLOY_DIR}/lib
+	@cp ${LIBRARY} ${DEPLOY_DIR}/lib
+#@cp ${PROGRAMS} ${INSTALL_DIR}/bin
+	@echo
 
