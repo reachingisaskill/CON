@@ -45,6 +45,7 @@ EXE_SRC_DIR = exec
 # Top level headers
 INSTALL_TOP_HEADERS = CON.h
 INSTALL_HEADERS =
+INSTALL_BINARIES = con
 
 # Library Name
 LIB_NAME = CON
@@ -92,6 +93,7 @@ EXE_SRC = $(filter %.cxx,${EXE_FILES})
 # Intallation headers
 INS_FILES = $(patsubst %.h,${INC_DIR}/%.h,$(filter %.h,$(INSTALL_HEADERS)))
 INS_TOP_FILES = $(patsubst %.h,${INC_DIR}/%.h,$(filter %.h,$(INSTALL_TOP_HEADERS)))
+INS_BINS = $(patsubst %,${BIN_DIR}/%,$(filter %,$(INSTALL_BINARIES)))
 
 
 
@@ -230,16 +232,19 @@ check_install :
 deploy : ${LIBRARY}
 	@echo
 	@echo "Deploying to local directory: " ${DEPLOY_DIR}
-	@if [ -n "${INS_TOP_FILES}" ]; then                   \
+	@if [ -n "${INS_TOP_FILES}" ]; then                  \
 	  mkdir -p ${DEPLOY_DIR}/include                    ;\
 	  cp ${INS_TOP_FILES} ${DEPLOY_DIR}/include         ;\
 	fi
-	@if [ -n "${INS_FILES}" ]; then                       \
+	@if [ -n "${INS_FILES}" ]; then                      \
 	  mkdir -p ${DEPLOY_DIR}/include/${LIB_NAME}        ;\
 	  cp ${INS_FILES} ${DEPLOY_DIR}/include/${LIB_NAME} ;\
 	fi
+	@if [ -n "${INS_BINS}" ]; then                       \
+	  mkdir -p ${DEPLOY_DIR}/bin                        ;\
+	  cp ${INS_BINS} ${DEPLOY_DIR}/bin                  ;\
+	fi
 	@mkdir -p ${DEPLOY_DIR}/lib
 	@cp ${LIBRARY} ${DEPLOY_DIR}/lib
-#@cp ${PROGRAMS} ${INSTALL_DIR}/bin
 	@echo
 

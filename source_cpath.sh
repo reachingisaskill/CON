@@ -12,11 +12,11 @@ DEPLOY=deploy
 CPATH=$CPATH:$DIR/$DEPLOY/include
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DIR/$DEPLOY/lib
 LIBRARY_PATH=$LIBRARY_PATH:$DIR/$DEPLOY/lib
-#PATH=$PATH:$DIR/$DEPLOY/bin
+PATH=$PATH:$DIR/$DEPLOY/bin
 
 # Export to the environment
 export CPATH
 export LD_LIBRARY_PATH
 export LIBRARY_PATH
-#export PATH
+export PATH
 
